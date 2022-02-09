@@ -20,3 +20,5 @@ LSTM 83개 종목 Adj Close들만 따로 h5 모델 가지고 다시 파이썬에
    추세 계절성 주기의 유무를 확인 후 , SARIMA로 할건지 ARIMA로 할 건지
 
 5. 이  모델링 코드는 sigmoid로 0,1 값만 알려줌 거기다가 accuracy가 nasdaq에서만해도 50% 정도로 적게 나옴 .
+
+6.High랑 Low까지 고려한건가?

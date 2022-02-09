@@ -20,7 +20,7 @@ import pickle
 # c = np.array(close)
 # output_atr = np.array(talib.ATR(h,l,c,14))
 
-
+# 이번 파일에서는 d=1 로 주고 시작할 것
 def mean_absolute_percentage_error(actual, prediction):
     actual = pd.Series(actual)
     prediction = pd.Series(prediction)
@@ -33,15 +33,13 @@ def get_arima(data, train_len, test_len):
     train = data.head(train_len).values.tolist()
     test = data.tail(test_len).values.tolist()
 
-    # auto_arima로 모델 초기화
-    model = auto_arima(train, max_p=3, max_q=3, seasonal=False, trace=True, # 이평선으로 계절성을 제거해주었으므로 seasonal=False
-                       error_action='ignore', suppress_warnings=True)
-    # model_0 = pm.auto_arima(y_train  # 데이터
-    #                         , d=1  # 차분 차수, ndiffs 결과!
-    #                         , start_p=0, max_p=3, start_q=0, max_q=3
-    #                         , m=1  # 음 중요한게...주기성이 있으면 따로 추가를 해줘야하는데
-    #                         , seasonal=True  # 계절성 ARIMA가 아니라면 필수!
-    #                         , stepwise=True, trace=True)
+    # auto_arima로 모델 초기화 ( <=================================================== 변화준 부분( d =1 )
+    model = pm.auto_arima(train  # 데이터
+                            , d=1  # 차분 차수, ndiffs 결과!
+                            , start_p=0, max_p=3, start_q=0, max_q=3
+                            , m=1  # 음 중요한게...주기성이 있으면 따로 추가를 해줘야하는데
+                            , seasonal=True  # 계절성 ARIMA가 아니라면 필수!
+                            , stepwise=True, trace=True)
 
     # 최적의 모델 파라미터 찾기.
     model.fit(train)
@@ -49,7 +47,7 @@ def get_arima(data, train_len, test_len):
     print('ARIMA order:', order, '\n')    # ARIMA order: (3, 2, 2)
     val_df['Arima_order'] = [order]
 
-    # test 데이터로 예측 하기
+    # 예측 하기
     prediction = []
     for i in range(len(test)):  # 252번 만큼.
         model = pm.ARIMA(order=order) # (3,1,1)로 해봐야쥐
@@ -205,39 +203,37 @@ if __name__ == '__main__':
         # Generate ARIMA and LSTM predictions
         print('\nWorking on ' + ma + ' predictions')
         try:
-            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, 1000, 252) # 이평으로 스무스해진 데이터(평균일정)=> # 1400, 252 이케 해도 될듯
+            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, 1000, 252) # 이평으로 스무스해진 데이터(평균일정)=>
         except:
             print('ARIMA error, skipping to next MA type')
             continue
 
         high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol, 1000, 252)  # 원본 종가 - 이평 의 데이터(분산된 느낌??)
 
-        final_prediction = pd.Series(low_vol_prediction) + pd.Series(high_vol_prediction) # series, 합산 => 최종예측 데이터
-        mse = mean_squared_error(final_prediction.values, data['close'].tail(252).values)  # test데이터에서 예측한 값 252와 실제 마지막 값 252 의 mse 구해보기
+        final_prediction = pd.Series(low_vol_prediction) + pd.Series(high_vol_prediction) # series
+        mse = mean_squared_error(final_prediction.values, data['close'].tail(252).values)
         print('mse의 타입', type(mse))     # float
         rmse = mse ** 0.5
         mape = mean_absolute_percentage_error(data['close'].tail(252).reset_index(drop=True), final_prediction)
         df_prediction = pd.DataFrame(columns=['prediction', 'mse', 'rmse', 'mape'])
         df_prediction.index.name = class_name
-        df_prediction['prediction'] = final_prediction
-        df_prediction.iloc[0][1] = mse
-        df_prediction.iloc[0][2] = rmse
-        df_prediction.iloc[0][3] = mape
-
-
+        df_prediction.loc['0']['prediction'] = final_prediction
+        df_prediction.loc['0']['mse'] = mse
+        df_prediction.loc['0']['rmse'] = rmse
+        df_prediction.loc['0']['mape'] = mape
         df_prediction.to_csv('./datasets_1/{}_final_prediction_values'.format(class_name), index=True)
         # Generate prediction accuracy
         actual = data['close'].tail(252).values
         result_1 = []
         result_2 = []
-        for i in range(1, len(final_prediction)): # 테스트 데이터(252개)로 정확도 측정하기.
+        for i in range(1, len(final_prediction)): # 1248
             # Compare prediction to previous close price
             if final_prediction[i] > actual[i-1] and actual[i] > actual[i-1]:
-                result_1.append(1) # 숫자 1을 추가하라.(정답)
+                result_1.append(1)
             elif final_prediction[i] < actual[i-1] and actual[i] < actual[i-1]:
-                result_1.append(1) # 숫자 1을 추가하라.(정답)
+                result_1.append(1)
             else:
-                result_1.append(0) # 숫자 0을 추가하라.(오답)
+                result_1.append(0)
 
             # Compare prediction to previous prediction
             if final_prediction[i] > final_prediction[i-1] and actual[i] > actual[i-1]:
