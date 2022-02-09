@@ -1,0 +1,18 @@
+pandas==0.24.2
+numpy==1.16.4
+scipy==1.2.0
+pmdarima==1.2.1
+scikit-learn==0.21.2
+Keras==2.2.4
+TA-Lib==0.4.17
+
+
+# cp34-cp34m이 파이썬 버전
+# python 3.7 버전이므로 37? <= 0.4.31 - pp37 시도
+python -m pip install 파일이름.whl
+pip install 파일이름.whl
+
+휴 주피터 => pip install TA-libㅔㅑㅔ
+
+이거 작동함
+conda install -c conda-forge ta-lib

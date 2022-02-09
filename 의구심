@@ -1,0 +1,22 @@
+1. 종목 대략 10개 정하기
+silver copper
+wheat oat
+지수 2  Vix    /   all ordinaries(호주 주가 지수) >- 아직 애매.
+환율 2  GBP/USD    /
+에너지 2 crude oil / natural gas
+
+
+2. 전체 중 몇년치의 데이터?
+여기선 최근 1500개만 함(.tail(1500)) => 대략 12년부터 10년간의 데이터
+  우리도 전체 다 말고 1500개만> 아님 다 ?
+
+
+3. val_loss 로 비교할 수 없음 LSTM 모델링 할 때만 val_loss가 나오기때문에
+HYbrid 최종적으로 하고 실제값 - 예측값 잔차의 제곱 평균 (MSE)를 직접 계산하고
+LSTM 83개 종목 Adj Close들만 따로 h5 모델 가지고 다시 파이썬에다가 예측치와 실제값의 평균을 구하는 작업을 한다.
+
+
+4. 데이터를 seasonal_decompose 와 시계열로 눈으로 봐서
+   추세 계절성 주기의 유무를 확인 후 , SARIMA로 할건지 ARIMA로 할 건지
+
+5. 이  모델링 코드는 sigmoid로 0,1 값만 알려줌 거기다가 accuracy가 nasdaq에서만해도 50% 정도로 적게 나옴 .
