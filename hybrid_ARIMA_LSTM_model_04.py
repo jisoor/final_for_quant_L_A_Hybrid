@@ -6,7 +6,7 @@ import pmdarima as pm
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
-from keras.layers import Dense, LSTM
+from keras.layers import *
 from keras.callbacks import EarlyStopping
 from talib import abstract
 import json
@@ -14,6 +14,8 @@ import json
 import talib
 import numpy as np
 import matplotlib.pyplot as plt
+from statsmodels.tsa.seasonal import seasonal_decompose
+
 import pickle
 # h = np.array(high)
 # l = np.array(low)
@@ -34,14 +36,12 @@ def get_arima(data, train_len, test_len):
     test = data.tail(test_len).values.tolist()
 
     # auto_arima로 모델 초기화
-    model = auto_arima(train, max_p=3, max_q=3, seasonal=False, trace=True, # 이평선으로 계절성을 제거해주었으므로 seasonal=False
-                       error_action='ignore', suppress_warnings=True)
-    # model_0 = pm.auto_arima(y_train  # 데이터
-    #                         , d=1  # 차분 차수, ndiffs 결과!
-    #                         , start_p=0, max_p=3, start_q=0, max_q=3
-    #                         , m=1  # 음 중요한게...주기성이 있으면 따로 추가를 해줘야하는데
-    #                         , seasonal=True  # 계절성 ARIMA가 아니라면 필수!
-    #                         , stepwise=True, trace=True)
+    model = pm.auto_arima(train  # 데이터
+                            , d=1  # 차분 차수, ndiffs 결과!
+                            , start_p=0, max_p=3, start_q=0, max_q=3
+                            , m=1  # 음 중요한게...주기성이 있으면 따로 추가를 해줘야하는데
+                            , seasonal=True  # 계절성 ARIMA가 아니라면 필수!
+                            , stepwise=True, trace=True)
 
     # 최적의 모델 파라미터 찾기.
     model.fit(train)
@@ -96,17 +96,20 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     # Set up & fit LSTM RNN
     # 모델 조정해보자 ( (1, 소프트맥스로 해보기 2.  tanh로 해보기
     model = Sequential()
-    model.add(LSTM(units=lstm_len, return_sequences=True, input_shape=(x_train.shape[1], 1)))
-    model.add(LSTM(units=int(lstm_len/2)))
+    model.add(LSTM(units=128, return_sequences=2, input_shape=(x_train.shape[1], 1), activation='tanh')) # (units=lstm_len)  activation='tanh'
+    model.add(Flatten())
+    model.add(Dropout(0.2))
+    model.add(Dense(256))
+    model.add(Dropout(0.2))
     model.add(Dense(1, activation='sigmoid')) # 'softmax' 아닌가 ??.
-
     model.compile(loss='mean_squared_error', optimizer='adam')
     early_stopping = EarlyStopping(monitor='loss', mode='min', verbose=1, patience=5)
-    fit_hist = model.fit(x_train, y_train, epochs=500, batch_size=2, verbose=2, callbacks=[early_stopping])
+
+    fit_hist = model.fit(x_train, y_train, epochs=1, batch_size=1, verbose=2, callbacks=[early_stopping])
     print(list(fit_hist.history)) # ['loss']
     plt.plot(fit_hist.history['loss'][:], label='loss')
     plt.show()
-    plt.pause(5)
+    plt.pause(1)
     plt.close()
     loss_value = fit_hist.history['loss'][-1] # loss
     print(loss_value)
@@ -174,7 +177,7 @@ if __name__ == '__main__':
             kurtosis_results[ma].append(k)
 
     kurtosis_results = pd.DataFrame(kurtosis_results)   # ( 11, 96) DF
-    kurtosis_results.to_csv('./datasets_1./kurtosis_results_without_change.csv', index=True)
+    kurtosis_results.to_csv('./datasets_4/kurtosis_results_without_change.csv', index=True)
 
 
 
@@ -203,6 +206,7 @@ if __name__ == '__main__':
         print(low_vol)
         high_vol = data['close'] - low_vol
         print(high_vol)
+
         # Generate ARIMA and LSTM predictions
         print('\nWorking on ' + ma + ' predictions')
         try:
@@ -255,7 +259,7 @@ if __name__ == '__main__':
                           'accuracy': {'prediction vs close': accuracy_1, 'prediction vs prediction': accuracy_2}}
 
         # save simulation data here as checkpoint
-        with open('./datasets_1/simulation_data.json', 'w') as fp:
+        with open('datasets_5/simulation_data.json', 'w') as fp:
             json.dump(simulation, fp)
 
     for ma in simulation.keys():
@@ -274,7 +278,7 @@ if __name__ == '__main__':
         # RMSE: 314.2596220745497
         # MAPE: 1.6777265314384462
 
-    val_df.to_csv('./datasets_1/Lstm_loss_and_Arima_order', index=True)
+    val_df.to_csv('./datasets_4/{}_lstm_loss_arima_order'.format(class_name), index=True)
 
 
     # 피클 담글 변수

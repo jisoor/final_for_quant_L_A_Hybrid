@@ -22,3 +22,6 @@ LSTM 83개 종목 Adj Close들만 따로 h5 모델 가지고 다시 파이썬에
 5. 이  모델링 코드는 sigmoid로 0,1 값만 알려줌 거기다가 accuracy가 nasdaq에서만해도 50% 정도로 적게 나옴 .
 
 6.High랑 Low까지 고려한건가?
+
+
+http://elearning.kocw.net/contents4/document/lec/2013/Konkuk/Leegiseong/5.pdf <= 완전괜찮은 사이트

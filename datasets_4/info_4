@@ -1,0 +1,18 @@
+model = pm.auto_arima(train  # 데이터
+                           , d=1  # 차분 차수, ndiffs 결과!
+                           , seasonal=True  # 계절성 ARIMA가 아니라면 필수!)
+
+이거 추가
+   => 최적의  parameter order : ( 3,1,1)
+
+seasonal_decompose_try.py 여기서 low_vol을 따로 분해해보니까 계절성이 살아있었다.
+그래서 d=1 해줌.(acf도 해봤는데 데이터타입 문제로 잘 안되었음)
+계절성=True로 적용해주고 다시 모델링
+
+오히려 떨어짐 ;;
+MIDPRICE
+Prediction vs Close:		48.61% Accuracy
+Prediction vs Prediction:	51.39% Accuracy
+MSE:	 80360.35610764276
+RMSE:	 283.47902234141196
+MAPE:	 1.7124129461790756

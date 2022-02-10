@@ -1,0 +1,8 @@
+MIDPRICE
+Prediction vs Close:		54.58% Accuracy
+Prediction vs Prediction:	51.39% Accuracy
+MSE:	 1583538.7905868555
+RMSE:	 1258.3873769975824
+MAPE:	 8.217566327662361
+
+결론 => 3, 5번이 가장 괜찮음
