@@ -14,14 +14,16 @@ import json
 import talib
 import numpy as np
 import matplotlib.pyplot as plt
-from statsmodels.tsa.seasonal import seasonal_decompose
-
+import yfinance as yf
+import datetime
 import pickle
 # h = np.array(high)
 # l = np.array(low)
 # c = np.array(close)
 # output_atr = np.array(talib.ATR(h,l,c,14))
 
+# 내일값 예측위해 필요한 데이터수
+# 가장 최신데이터의 (period-1) + (lstm_len-1)
 
 def mean_absolute_percentage_error(actual, prediction):
     actual = pd.Series(actual)
@@ -29,22 +31,18 @@ def mean_absolute_percentage_error(actual, prediction):
     return 100 * np.mean(np.abs((actual - prediction))/actual)
 
 
-def get_arima(data, train_len, test_len):
+def get_arima(data, train_len, test_len): # 1198, 252
     # prepare train and test data
     data = data.tail(test_len + train_len).reset_index(drop=True)
     train = data.head(train_len).values.tolist()
     test = data.tail(test_len).values.tolist()
 
     # auto_arima로 모델 초기화
-    model = pm.auto_arima(train  # 데이터
-                            , d=1  # 차분 차수, ndiffs 결과!
-                            , start_p=0, max_p=3, start_q=0, max_q=3
-                            , m=1  # 음 중요한게...주기성이 있으면 따로 추가를 해줘야하는데
-                            , seasonal=True  # 계절성 ARIMA가 아니라면 필수!
-                            , stepwise=True, trace=True)
+    model = auto_arima(train, max_p=3, max_q=3, seasonal=False, trace=True, # 이평선으로 계절성을 제거해주었으므로 seasonal=False
+                       error_action='ignore', suppress_warnings=True)
 
     # 최적의 모델 파라미터 찾기.
-    model.fit(train)
+    model.fit(train)  # 1198개 train데이터 입히기.
     order = model.get_params()['order']   # (3, 2, 2)
     print('ARIMA order:', order, '\n')    # ARIMA order: (3, 2, 2)
     val_df['Arima_order'] = [order]
@@ -52,12 +50,15 @@ def get_arima(data, train_len, test_len):
     # test 데이터로 예측 하기
     prediction = []
     for i in range(len(test)):  # 252번 만큼.
-        model = pm.ARIMA(order=order) # (3,1,1)로 해봐야쥐
-        model.fit(train)
+        model = pm.ARIMA(order=order)
+        model.fit(train)   # 맨 첨 데이터 1198개
         print('working on', i+1, 'of', test_len, '-- ' + str(int(100 * (i + 1) / test_len)) + '% complete')
-        prediction.append(model.predict()[0])
-        train.append(test[i])
+        prediction.append(model.predict()[0]) # 252개 데이터 예측.
+        train.append(test[i]) # train list는 1450개가 됌. arima는 이전값이 필요하기 때문에 예측할 때도 이전값을 계속 업데이트 시킨다.
 
+    print('예측 값들:',  prediction)
+
+    model.save('./models/{}_Arima_model.h5'.format(class_name))  # arima 모델 저장
     # Generate error data
     mse = mean_squared_error(test, prediction)
     rmse = mse ** 0.5
@@ -68,27 +69,27 @@ def get_arima(data, train_len, test_len):
 def get_lstm(data, train_len, test_len, lstm_len=4):
     # prepare train and test data
     data = data.tail(test_len + train_len).reset_index(drop=True)
-    dataset = np.reshape(data.values, (len(data), 1))  # ( 1500, 1)
+    dataset = np.reshape(data.values, (len(data), 1))  # ( 1450, 1)
     minmaxscaler = MinMaxScaler(feature_range=(0, 1))   # 이렇게도 가능하군..
     dataset_scaled = minmaxscaler.fit_transform(dataset)
+
     x_train = []
     y_train = []
     x_test = []
-
-    for i in range(lstm_len, train_len):  # 4, 1000
+    for i in range(lstm_len, train_len):  # 4, 1198
         x_train.append(dataset_scaled[i - lstm_len:i, 0])  # 0~3, 1~4, 2~5, .... , 996~999   (4, 1)로 저장됨
         y_train.append(dataset_scaled[i, 0])               #  4,   5,   6 , .... ,   1000
-    for i in range(train_len, len(dataset_scaled)):    # 1000 ~ 1500
-        x_test.append(dataset_scaled[i - lstm_len:i, 0])  # ( 500, 4)
+    for i in range(train_len, len(dataset_scaled)):    # 1198 ~ 1450 (252개)
+        x_test.append(dataset_scaled[i - lstm_len:i, 0])  # 1194 ~ 1197, 1195 ~ 1198 , ....... , 1446 ~ 1449
 
-    x_train = np.array(x_train)         # (1, 4, 1) ??
+    x_train = np.array(x_train)
     print('======== x_train 셰입 ========== ' , x_train.shape) # ( 996, 4)
-    y_train = np.array(y_train)   # ( 996, 1) ??
+    y_train = np.array(y_train)
     print(y_train.shape)        # ( 996, )
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-    print(x_train.shape)        # (996, 1, 1 ) ??  => (996, 4, 1)
+    print(x_train.shape)        #  => (996, 4, 1)
     x_test = np.array(x_test)
-    print(x_test.shape)         # (1, 500, 4)??   => (252, 4)
+    print(x_test.shape)         # => (252, 4)
     x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
     print(x_test.shape)             # (252, 4, 1)
 
@@ -113,6 +114,7 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     plt.close()
     loss_value = fit_hist.history['loss'][-1] # loss
     print(loss_value)
+    model.save('./models/{}_Lstm_model.h5'.format(class_name))  # lstm  모델 저장
 
     # loss_value 값 저장
     val_df['Lstm_loss'] = [loss_value]
@@ -123,7 +125,7 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
 
     output = []
     for i in range(len(prediction)):
-        output.extend(prediction[i])
+        output.extend(prediction[i]) # extend와 append의 차이점 extend는 내용물을 넣어준다(리스트면, 리스트 안의 내용만 꺼내서) / 걍  for문 안쓰고 prediction = output.extend(prediction) 하면...
     prediction = output
     print( '==============prediction : =========' , prediction)  # 리스트로 252개?
     print(len(prediction))
@@ -135,23 +137,26 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
 
 
 if __name__ == '__main__':
-    # Load historical data
-    # CSV should have columns: ['date', 'open', 'high', 'low', 'close', 'volume']
-    class_name = 'Nasdaq'
-    val_df = pd.DataFrame(columns=['class_name', 'Lstm_loss', 'Arima_order']) # 컬럼으로 이루어진 데이터프레임 만들기
-    val_df.set_index('class_name', inplace=True)   # 인덱스 설정
-    val_df.loc['Nasdaq'] = np.nan   # 인덱스 행 추가 (np.nan)으로
+    # 티커명 참조해서 csv 다운로드 받기
+    futures = [('BZ=F', 'BRENT_OIL'), ('CC=F', 'COCOA'), ('KC=F', 'Coffee'), ('HG=F', 'COPPER'), ('ZC=F', 'CORN'),('CT=F', 'COTTON'),
+               ('CL=F', 'CRUDE_OIL'), ('YM=F', 'DOW'), ('GF=F', 'FEEDER_CATTLE'), ('GC=F', 'GOLD'), ('HE=F', 'LEAN_HOGS'), ('LE=F', 'LIVE_CATTLE'),
+               ('LBS=F', 'LUMBER'), ('NQ=F', 'NASDAQ'), ('NG=F', 'NATURAL_GAS'), ('ZO=F', 'OAT'), ('PA=F', 'PALLADIUM'),('PL=F', 'PLATINUM'), ('ZR=F', 'ROUGH_RICE'),
+               ('RTY=F', 'RUSSEL2000'), ('SI=F', 'SILVER'), ('ZS=F', 'SOYBEAN'), ('ZM=F', 'SOYBEAN_MEAL'), ('ZL=F', 'SOYBEAN_OIL'),
+               ('ES=F', 'SPX'), ('SB=F', 'SUGAR'), ('ZT=F', 'US2YT'), ('ZF=F', 'US5YT'), ('ZN=F', 'US10YT'),('ZB=F', 'US30YT'), ('KE=F', 'WHEAT')]
+    class_name = 'brent_oil'
+    Today = datetime.date.today()
+    days_98 = datetime.timedelta(days=98)
+    lstm_len_day = datetime.timedelta(days=4-1)
 
-    data = pd.read_csv('NASDAQ Composite_2007-01-03-2022-01-25.csv', index_col=0, header=0).tail(1500).reset_index(drop=True) # 왜 1500개만 했지?? 그게 나으려나..
-    print(data)
+    data = yf.download('BZ=F', start=days_98 + lstm_len_day , end=Today) # start_day + today => 전체 데이터 수가 98 + 3 = 101이여야 함
+
     # Initialize moving averages from Ta-Lib, store functions in dictionary
     talib_moving_averages = ['SMA', 'EMA', 'WMA', 'DEMA', 'KAMA', 'MIDPOINT', 'MIDPRICE', 'T3', 'TEMA', 'TRIMA']
     functions = {}
     for ma in talib_moving_averages:
         functions[ma] = abstract.Function(ma)
 
-    print('SMA', functions['SMA'])
-
+    # CSV should have columns: ['date', 'open', 'high', 'low', 'close', 'volume']
     data = data.rename(columns={'Adj Close':'close'})  # 이름을 'close' 'High', 'Low', 'close' 'change' 인덱스는 걍 순서
     data = data.rename(columns={'High': 'high'})
     data = data.rename(columns={'Low': 'low'})
@@ -173,11 +178,11 @@ if __name__ == '__main__':
             # print('k는??', k )
             # add to dictionary
             if ma not in kurtosis_results.keys():  # key값이 없다면
-                kurtosis_results[ma] = []          # { key : [k 첨도 값_SMA, k 첨도 값_EMA, k 첨도 값_WMA ...... , k 첨도 값_TRIMA  }
-            kurtosis_results[ma].append(k)
+                kurtosis_results[ma] = []          # { 'period' : [ 4, 5, 6, 7 ...... , 97, 98, 99 ],
+            kurtosis_results[ma].append(k)         #   ' SMA' :   [ 수치1, 수치2 , ..... , 수치 96 ] }
 
-    kurtosis_results = pd.DataFrame(kurtosis_results)   # ( 11, 96) DF
-    kurtosis_results.to_csv('./datasets_4/kurtosis_results_without_change.csv', index=True)
+    kurtosis_results = pd.DataFrame(kurtosis_results)   # ( 96, 11) DF
+    kurtosis_results.to_csv('./datasets_3/kurtosis_results_without_change.csv', index=True)
 
 
 
@@ -200,22 +205,23 @@ if __name__ == '__main__':
 
 
     simulation = {}
-    for ma in optimized_period.columns:
+    for ma in optimized_period.columns: #talib_moving_averages
         # 저변동성 / 고 변동성 시계열로 각각 나누기
+        # period 가 50 이니깐
         low_vol = functions[ma](data, int(optimized_period.loc['period'][ma])) # int로 만들어줘야./ 총 1248곘지만 앞에 이평 길이-1 만큼 Nan값
         print(low_vol)
         high_vol = data['close'] - low_vol
         print(high_vol)
-
         # Generate ARIMA and LSTM predictions
         print('\nWorking on ' + ma + ' predictions')
+
         try:
-            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, 1000, 252) # 이평으로 스무스해진 데이터(평균일정)=> # 1400, 252 이케 해도 될듯
+            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, 1500-252-int(optimized_period.iloc[0][0]), 252) # 이평으로 스무스해진 데이터(평균일정)=> # 1400, 252 이케 해도 될듯
         except:
             print('ARIMA error, skipping to next MA type')
             continue
-
-        high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol, 1000, 252)  # 원본 종가 - 이평 의 데이터(분산된 느낌??)
+        # exit()
+        high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol, 1500-252-int(optimized_period.iloc[0][0]), 252)  # 원본 종가 - 이평 의 데이터(분산된 느낌??)
 
         final_prediction = pd.Series(low_vol_prediction) + pd.Series(high_vol_prediction) # series, 합산 => 최종예측 데이터
         mse = mean_squared_error(final_prediction.values, data['close'].tail(252).values)  # test데이터에서 예측한 값 252와 실제 마지막 값 252 의 mse 구해보기
@@ -259,7 +265,7 @@ if __name__ == '__main__':
                           'accuracy': {'prediction vs close': accuracy_1, 'prediction vs prediction': accuracy_2}}
 
         # save simulation data here as checkpoint
-        with open('datasets_5/simulation_data.json', 'w') as fp:
+        with open('./datasets_3/simulation_data.json', 'w') as fp:
             json.dump(simulation, fp)
 
     for ma in simulation.keys():
@@ -278,7 +284,7 @@ if __name__ == '__main__':
         # RMSE: 314.2596220745497
         # MAPE: 1.6777265314384462
 
-    val_df.to_csv('./datasets_4/{}_lstm_loss_arima_order'.format(class_name), index=True)
+    val_df.to_csv('./datasets_3/{}_lstm_loss_arima_order'.format(class_name), index=True)
 
 
     # 피클 담글 변수

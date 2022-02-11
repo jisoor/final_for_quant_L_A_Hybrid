@@ -1,5 +1,0 @@
-lstm 128
-Flatten()
-dropout(0.2)
-model.add(Dense(128))
-model.add(Dropout(0.2))

@@ -1,1 +1,11 @@
-1. lstm 128, 256 , return_sequences=2
+1. lstm 128, 256 , return_sequences=True
+
+갑래 - crude oil, silver, copper
+지수 - gold, palladium, corn, Vix,
+
+1. 데이터 전체가져오기 1500개 -> 3500개 정도 (15년 치 정도)
+2. 가장 최적의 ma 알아냈으면 모델링 돌릴 떈 그걸로만
+3. lstm model, arima model, minmaxscaler 저장
+4. 내일 값 예측
+
+( period-1 ) + ( lstm_len -1 )

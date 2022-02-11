@@ -53,11 +53,12 @@ def get_arima(data, train_len, test_len):
     prediction = []
     for i in range(len(test)):  # 252번 만큼.
         model = pm.ARIMA(order=order) # (3,1,1)로 해봐야쥐
-        model.fit(train)
+        model.fit(train)   # 맨 첨 데이터 1000개
         print('working on', i+1, 'of', test_len, '-- ' + str(int(100 * (i + 1) / test_len)) + '% complete')
         prediction.append(model.predict()[0])
-        train.append(test[i])
+        train.append(test[i]) # train list는 1252개가 됌.
 
+    model.save('./models/{}_Arima_model.h5'.format(class_name))  # arima 모델 저장
     # Generate error data
     mse = mean_squared_error(test, prediction)
     rmse = mse ** 0.5
@@ -96,7 +97,7 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     # Set up & fit LSTM RNN
     # 모델 조정해보자 ( (1, 소프트맥스로 해보기 2.  tanh로 해보기
     model = Sequential()
-    model.add(LSTM(units=128, return_sequences=2, input_shape=(x_train.shape[1], 1), activation='tanh')) # (units=lstm_len)  activation='tanh'
+    model.add(LSTM(units=128, return_sequences=True, input_shape=(x_train.shape[1], 1), activation='tanh')) # (units=lstm_len)  activation='tanh'
     model.add(Flatten())
     model.add(Dropout(0.2))
     model.add(Dense(256))
@@ -113,6 +114,7 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     plt.close()
     loss_value = fit_hist.history['loss'][-1] # loss
     print(loss_value)
+    model.save('./models/{}_Lstm_model.h5'.format(class_name))  # lstm  모델 저장
 
     # loss_value 값 저장
     val_df['Lstm_loss'] = [loss_value]
@@ -202,6 +204,7 @@ if __name__ == '__main__':
     simulation = {}
     for ma in optimized_period.columns:
         # 저변동성 / 고 변동성 시계열로 각각 나누기
+        # period 가 50 이니깐
         low_vol = functions[ma](data, int(optimized_period.loc['period'][ma])) # int로 만들어줘야./ 총 1248곘지만 앞에 이평 길이-1 만큼 Nan값
         print(low_vol)
         high_vol = data['close'] - low_vol
