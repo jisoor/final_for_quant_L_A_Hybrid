@@ -6,4 +6,11 @@ ma = optimized_period.columns[0] SMA    ARIMA order: (3, 1, 3)
 
 ma = optimized_period.columns[1] KAMA
 ma = optimized_period.columns[2] T3
-ma = optimized_period.columns[3] TRIMA
+# TRIMA 채택
+ma = optimized_period.columns[3] TRIMA    (2, 1, 2)  loss: 0.0021  period=64
+TRIMA
+Prediction vs Close:		55.78% Accuracy
+Prediction vs Prediction:	49.8% Accuracy
+MSE:	 3.1892427640295793
+RMSE:	 1.7858451119930807
+MAPE:	 1.7914948736878549

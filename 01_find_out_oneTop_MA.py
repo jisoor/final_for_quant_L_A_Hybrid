@@ -15,10 +15,13 @@ import talib
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import statsmodels.api as sm
+from statsmodels.tsa.arima_model import ARIMAResults
 # h = np.array(high)
 # l = np.array(low)
 # c = np.array(close)
 # output_atr = np.array(talib.ATR(h,l,c,14))
+# 첨도를 구하고 전체 ma 돌려서 최적의 ma구하는 파일. -> 예측도가 가장 높은 ma를 택한다.
 
 
 def mean_absolute_percentage_error(actual, prediction):
@@ -51,10 +54,10 @@ def get_arima(data, train_len, test_len): #  len(data) , 252
         print('working on', i+1, 'of', test_len, '-- ' + str(int(100 * (i + 1) / test_len)) + '% complete')
         prediction.append(model.predict()[0]) # 252개 데이터 예측.
         train.append(test[i]) # train list는 1450개가 됌. arima는 이전값이 필요하기 때문에 예측할 때도 이전값을 계속 업데이트 시킨다.
+        # if i >= len(test) - 1:
+        #     model.save('./models/{}_Arima_model.h5'.format(class_name))  # arima 모델 저장( 2007년 ~ 2022-01-25 까지 저장)
 
     print('예측 값들:',  prediction)
-
-    model.save('./models/{}_Arima_model.h5'.format(class_name))  # arima 모델 저장
     # Generate error data
     mse = mean_squared_error(test, prediction)
     rmse = mse ** 0.5
@@ -70,8 +73,8 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     dataset_scaled = minmaxscaler.fit_transform(dataset)
     # minmaxscaler 저장
 
-    with open('./minmaxscaler/{}_minmaxscaler.pickle'.format(class_name), 'wb') as f:
-        pickle.dump(minmaxscaler, f)
+    # with open('./minmaxscaler/{}_minmaxscaler.pickle'.format(class_name), 'wb') as f:
+    #     pickle.dump(minmaxscaler, f)
 
     x_train = []
     y_train = []
@@ -108,13 +111,13 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
 
     fit_hist = model.fit(x_train, y_train, epochs=1, batch_size=1, verbose=2, callbacks=[early_stopping])
     print(list(fit_hist.history)) # ['loss']
-    plt.plot(fit_hist.history['loss'][:], label='loss')
-    plt.show()
-    plt.pause(1)
-    plt.close()
+    # plt.plot(fit_hist.history['loss'][:], label='loss')
+    # plt.show()
+    # plt.pause(1)
+    # plt.close()
     loss_value = fit_hist.history['loss'][-1] # loss
     print(loss_value)
-    model.save('./models/{}_Lstm_model.h5'.format(class_name))  # lstm  모델 저장
+    # model.save('./models/{}_Lstm_model.h5'.format(class_name))  # lstm  모델 저장
 
     # loss_value 값 저장
     val_df['Lstm_loss'] = [loss_value]
@@ -179,6 +182,7 @@ if __name__ == '__main__':
     kurtosis_results.to_csv('./brent_oil/kurtosis_results_without_change.csv', index=True)
 
 
+    # ma_df = pd.DataFrame( ) 이따가 ma랑 period DF만들기
     optimized_period = pd.DataFrame(index=['period'])   # 이것인가..<= 데이터프레임 만들어줘야함
     # Determine period with K closest to 3 +/-5%   K 첨도 값이 3 +- 5% 사이면 변동성이 low volatiliy => ARIMA로 예측측    optimized_period = {}
     # 최적의 함술 구하는 건지 최적의 period를 구하는 건지(이동평균 기준)
@@ -193,6 +197,8 @@ if __name__ == '__main__':
             print('최적의 이동평균은? ', df.at[0, 'period'])
         else:
             print(ma + ' is not viable, best K greater or less than 3 +/-5%')
+
+
     print('\nOptimized periods 이평 길이에대한 df:', optimized_period)  # df 인덱스가 기본이고, 열은 'Midprice' 값은 하나의 최적 period가 들어가있음
     print(type(optimized_period))
 
