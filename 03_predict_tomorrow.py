@@ -100,10 +100,10 @@ if __name__ == '__main__':
     arima_prediction = model.predict()[0]  # ㅁ내일 값 예측
     print('arima 내일 예측 값:', arima_prediction) # 내일 예측 값: 79.01496184233464
 
-
+############## 이 밑만 해결하면 댐 ###########################
     # LSTM 예측
     predict_lstm_price = high_vol[-4:]
-    dataset = np.reshape(data.values, (1, lstm_len, 1))  # ( 1, lstm_len, 1) 아닌강>?
+    dataset = np.reshape(predict_lstm_price.values, (lstm_len, 1))  # ( 1, lstm_len, 1) 아닌강>?
     model = load_model('./models/{}_Lstm_model.h5'.format(class_name))
     with open('./minmaxscaler/{}_minmaxscaler.pickle'.format(class_name), 'rb') as f:
         minmaxscaler = pickle.load(f)
