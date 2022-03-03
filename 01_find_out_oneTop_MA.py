@@ -146,14 +146,16 @@ if __name__ == '__main__':
     val_df.set_index('class_name', inplace=True)   # 인덱스 설정
     val_df.loc[class_name] = np.nan   # 인덱스 행 추가 (np.nan)으로
 
-    data = pd.read_csv('futures_BRENT_OIL.csv', index_col=0, header=0).reset_index(drop=True) # 왜 1500개만 했지?? 그게 나으려나..
+    data = pd.read_csv('futures_BRENT_OIL.csv', index_col=0, header=0).reset_index(drop=True) #전체
     print(data)
     print( '데이터 길이', len(data))  # 3591
+
     # Initialize moving averages from Ta-Lib, store functions in dictionary
     talib_moving_averages = ['SMA', 'EMA', 'WMA', 'DEMA', 'KAMA', 'MIDPOINT', 'MIDPRICE', 'T3', 'TEMA', 'TRIMA']
     functions = {}
     for ma in talib_moving_averages:
         functions[ma] = abstract.Function(ma)
+
 
     # print('SMA', functions['SMA'])
     data = data.rename(columns={'Adj_Close':'close'})  # 이름을 'close' 'High', 'Low', 'close' 'change' 인덱스는 걍 순서
@@ -202,7 +204,6 @@ if __name__ == '__main__':
     print('\nOptimized periods 이평 길이에대한 df:', optimized_period)  # df 인덱스가 기본이고, 열은 'Midprice' 값은 하나의 최적 period가 들어가있음
     print(type(optimized_period))
 
-
     simulation = {}
     for ma in optimized_period.columns: #
         # 저변동성 / 고 변동성 시계열로 각각 나누기
@@ -214,23 +215,33 @@ if __name__ == '__main__':
         # Generate ARIMA and LSTM predictions
         print('\nWorking on ' + ma + ' predictions')
 
+        # train_test_set 나누기
+        ###################################################################################
+        from sklearn.model_selection import train_test_split
+        train_set, test_set = train_test_split(data, test_size=0.2, shuffle=False)
+        print(len(train_set), len(test_set))
+        print(test_set.tail())
+
+        # 길이 설정
+        train_len = len(train_set)
+        test_len = len(test_set)
         try:
-            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, len(data)-252-int(optimized_period.iloc[0][0]), 252) # 이평으로 스무스해진 데이터(평균일정)=> # 1400, 252 이케 해도 될듯
+            low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, train_len-(int(optimized_period[ma]['period'])-1), test_len) # 이평으로 스무스해진 데이터(평균일정)=> # 1400, 252 이케 해도 될듯
         except:
             print('ARIMA error, skipping to next MA type')
             continue
-        # exit()
-        high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol, len(data)-252-int(optimized_period.iloc[0][0]), 252)  # 원본 종가 - 이평 의 데이터(분산된 느낌??)
+
+        high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol,train_len-(int(optimized_period[ma]['period'])-1), test_len)  # 원본 종가 - 이평 의 데이터(분산된 느낌??)
 
         final_prediction = pd.Series(low_vol_prediction) + pd.Series(high_vol_prediction) # series, 합산 => 최종예측 데이터
-        mse = mean_squared_error(final_prediction.values, data['close'].tail(252).values)  # test데이터에서 예측한 값 252와 실제 마지막 값 252 의 mse 구해보기
+        mse = mean_squared_error(final_prediction.values, data['close'].tail(test_len).values)  # test데이터에서 예측한 값 252와 실제 마지막 값 252 의 mse 구해보기
         print('mse의 타입', type(mse))     # float
         rmse = mse ** 0.5
-        mape = mean_absolute_percentage_error(data['close'].tail(252).reset_index(drop=True), final_prediction)
+        mape = mean_absolute_percentage_error(data['close'].tail(test_len).reset_index(drop=True), final_prediction)
 
 
         # Generate prediction accuracy
-        actual = data['close'].tail(252).values
+        actual = data['close'].tail(test_len).values
         result_1 = []
         result_2 = []
         for i in range(1, len(final_prediction)): # 테스트 데이터(252개)로 정확도 측정하기.
@@ -340,8 +351,7 @@ if __name__ == '__main__':
 
     for ma in simulation.keys():
         print('\n' + ma)
-        print('Prediction vs Close:\t\t' + str(round(100*simulation[ma]['accuracy']['prediction vs close'], 2))
-              + '% Accuracy')
+        print('Prediction vs Close:\t\t' + str(round(100*simulation[ma]['accuracy']['prediction vs close'], 2)) + '% Accuracy')
         print('Prediction vs Prediction:\t' + str(round(100*simulation[ma]['accuracy']['prediction vs prediction'], 2))
               + '% Accuracy')
         print('MSE:\t', simulation[ma]['final']['mse'],
