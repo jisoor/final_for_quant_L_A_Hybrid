@@ -42,19 +42,21 @@ if __name__ == '__main__':
                ('LBS=F', 'LUMBER'), ('NQ=F', 'NASDAQ'), ('NG=F', 'NATURAL_GAS'), ('ZO=F', 'OAT'), ('PA=F', 'PALLADIUM'),('PL=F', 'PLATINUM'), ('ZR=F', 'ROUGH_RICE'),
                ('RTY=F', 'RUSSEL2000'), ('SI=F', 'SILVER'), ('ZS=F', 'SOYBEAN'), ('ZM=F', 'SOYBEAN_MEAL'), ('ZL=F', 'SOYBEAN_OIL'),
                ('ES=F', 'SPX'), ('SB=F', 'SUGAR'), ('ZT=F', 'US2YT'), ('ZF=F', 'US5YT'), ('ZN=F', 'US10YT'),('ZB=F', 'US30YT'), ('KE=F', 'WHEAT')]
-    class_name = 'brent_oil'
-
 
     # 기존의 ma와 이동평균 가져오기
+    class_name = 'brent_oil'
     ma = 'TRIMA'
     optimized_period = 64
+    order = (2, 1, 2)
     lstm_len = 4
     Today = datetime.date.today()
+    ticker = 'BZ=F'
+
 
 
     # 2022-01-26 부터 필요할 듯함( 기존에 트레인 시킨 마지막 데이타 이후로부터)
     # 2022-01-26 ~ 02-09
-    data = yf.download('BZ=F', start='2021-06-27', end=Today) #적당히 6~8개월 어치 데이터 가져오기
+    data = yf.download(ticker, start='2021-06-27', end=Today) #적당히 6~8개월 어치 데이터 가져오기
     data = data.reset_index(drop=True)
     print(len(data)) # 1/26 ~ 2/9(어제)까지 대략 12개의 종가를 예측, backtesting 시켜보자 .(2/10일은 공휴일이었나봄)  # 159개
 
@@ -87,10 +89,9 @@ if __name__ == '__main__':
     # Generate ARIMA and LSTM predictions
 
     # 모델 불러오기
-    with open('./models/{}_Arima_model.pickle'.format(class_name), 'rb') as f:
+    with open('./{}/{}_Arima_model.pickle'.format(class_name , class_name), 'rb') as f:
         model = pickle.load(f)
-    # order 튜플로 불러오기.
-    order = (2, 1, 2)
+
 
     ############## 어떻게 될지 모르겠음 . 시도해보기 #############################
     # data = 2022-01-26 ~ 2022-02-10(가장 최신 종가데이터)를 넣어서 내일 값 예측시키기.
@@ -104,8 +105,8 @@ if __name__ == '__main__':
     # LSTM 예측
     predict_lstm_price = high_vol[-4:]
     dataset = np.reshape(predict_lstm_price.values, (lstm_len, 1))  # ( 1, lstm_len, 1) 아닌강>?
-    model = load_model('./models/{}_Lstm_model.h5'.format(class_name))
-    with open('./minmaxscaler/{}_minmaxscaler.pickle'.format(class_name), 'rb') as f:
+    model = load_model('./{}/{}_Lstm_model.h5'.format(class_name, class_name))
+    with open('./{}/{}_minmaxscaler.pickle'.format(class_name, class_name), 'rb') as f:
         minmaxscaler = pickle.load(f)
     dataset_scaled = minmaxscaler.transform(dataset)
     lstm_prediction = model.predict(dataset_scaled)  # dataset_scaled(1, 30, 1)안해줘도??

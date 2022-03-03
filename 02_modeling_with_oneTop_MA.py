@@ -58,7 +58,7 @@ def get_arima(data, train_len, test_len): #  len(data) , 252
         prediction.append(model.predict()[0]) # 252개 데이터 예측.
         train.append(test[i]) # train list는 1450개가 됌. arima는 이전값이 필요하기 때문에 예측할 때도 이전값을 계속 업데이트 시킨다.
         if i >=  test_len - 1:
-            with open('./models/{}_Arima_model.pickle'.format(class_name), 'wb') as f:
+            with open('./{}/{}_Arima_model.pickle'.format(class_name, class_name), 'wb') as f:
                 pickle.dump(model, f)                            # arima 모델 저장( 2007년 ~ 2022-01-25 까지 저장)
 
     print('예측 값들:',  prediction)
@@ -77,7 +77,7 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     dataset_scaled = minmaxscaler.fit_transform(dataset)
     # minmaxscaler 저장
 
-    with open('./minmaxscaler/{}_minmaxscaler.pickle'.format(class_name), 'wb') as f:
+    with open('./{}/{}_minmaxscaler.pickle'.format(class_name, class_name), 'wb') as f:
         pickle.dump(minmaxscaler, f)
 
     x_train = []
@@ -121,7 +121,7 @@ def get_lstm(data, train_len, test_len, lstm_len=4):
     plt.close()
     loss_value = fit_hist.history['loss'][-1] # loss
     print(loss_value)
-    model.save('./models/{}_Lstm_model.h5'.format(class_name))  # lstm  모델 저장
+    model.save('./{}/{}_Lstm_model.h5'.format(class_name, class_name))  # lstm  모델 저장
 
     # loss_value 값 저장
     val_df['Lstm_loss'] = [loss_value]
@@ -188,7 +188,7 @@ if __name__ == '__main__':
     # 길이 설정
     train_len = len(train_set)
     test_len = len(test_set)
-    train = len(train_len)-(optimized_period-1)# train_set 길이 - Nan값
+    train = train_len-(optimized_period-1)# train_set 길이 - Nan값
     # 이평으로 스무스해진 데이터(평균일정)
     low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, train , test_len)
     # (원본 종가 - 이평) 의 데이터(분산된 느낌??)
