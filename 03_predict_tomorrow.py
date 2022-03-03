@@ -119,6 +119,6 @@ if __name__ == '__main__':
     final_prediction = arima_prediction + prediction
     print('최종 내일 예측 값은?? ====> ', final_prediction)
 
-# pip install numpy==1.19.2
+# pip install numpy == 1.19.2
 
 
