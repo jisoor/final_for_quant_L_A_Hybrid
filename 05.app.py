@@ -47,11 +47,15 @@ class WindowClass(QMainWindow, form_class) :
         self.setWindowIcon(QIcon('img/icons8-stock-64.png'))
 
         # 버튼에 기능을 연결하는 코드
-        self.cbox.activated[str].connect(self.list_click)
-        self.btn_predict.clicked.connect(self.btn_predict_click)  # 종가 예측 버튼
         self.cbox_list = ['brent_oil', 'Gold']
         self.cbox.addItem(self.cbox_list[0]) # brent_oil
         self.cbox.addItem(self.cbox_list[1]) # gold
+
+        self.cbox.activated[str].connect(self.list_click)
+        self.btn_predict.clicked.connect(self.btn_predict_click)  # 종가 예측 버튼
+
+        self.index = 0
+        self.class_name = 'brent_oil'
 
         self.brent_ma = 'TRIMA'
         self.gold_ma = 'WMA'
@@ -64,12 +68,8 @@ class WindowClass(QMainWindow, form_class) :
 
     def btn_predict_click(self):
 
-        # futures = [('BZ=F', 'BRENT_OIL'), ('GC=F', 'GOLD')]
-
-
         # 기존의 ma와 이동평균 가져오기
-        # class_name = 'brent_oil'
-        if self.index == 0:# class_name == 'brent_oil'
+        if self.index == 0:   # class_name == 'brent_oil'
             ma = self.brent_ma
             optimized_period = self.brent_optimized_period
             order = self.brent_order
@@ -136,14 +136,17 @@ class WindowClass(QMainWindow, form_class) :
 
         final_prediction = arima_prediction + prediction
         print('최종 내일 예측 값은?? ====> ', final_prediction)
-        self.lbl.setText(self.class_name, '종목의 예측종가는', final_prediction, '입니다.' )
+        print(self.class_name, final_prediction)
+        self.lbl.setText( '%s 종목의 예측종가는 %.2f$입니다.'% (self.class_name,  final_prediction))
+        # self.lbl_01.setText('내일 %s의 예측 최고가는 %.3f원입니다.' % (text, tmr_predicted_value[0][0]))
 
 
     def list_click(self):
-        self.index = int(str(self.cbox_list.currentIndex()))
+        self.index = str(self.cbox.currentIndex())
+        self.index = int(self.index)
         print('int index', self.index)
 
-        self.class_name = str(self.cbox_list.currentText())
+        self.class_name = str(self.cbox.currentText())
         print(self.class_name)
 
 
