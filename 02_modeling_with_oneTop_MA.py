@@ -179,11 +179,20 @@ if __name__ == '__main__':
     # Generate ARIMA and LSTM predictions
     print('\nWorking on ' + ma + ' predictions')
 
-    train = len(data)-252-optimized_period-1
+    # train_test_set 나누기
+    from sklearn.model_selection import train_test_split
+    train_set, test_set = train_test_split(data, test_size=0.2, shuffle=False)
+    print(len(train_set), len(test_set))
+    print(test_set.tail())
+
+    # 길이 설정
+    train_len = len(train_set)
+    test_len = len(test_set)
+    train = len(train_len)-(optimized_period-1)
     # 이평으로 스무스해진 데이터(평균일정)
-    low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, train , 252)
+    low_vol_prediction, low_vol_mse, low_vol_rmse, low_vol_mape = get_arima(low_vol, train , test_len)
     # (원본 종가 - 이평) 의 데이터(분산된 느낌??)
-    high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol, train , 252)
+    high_vol_prediction, high_vol_mse, high_vol_rmse, high_vol_mape = get_lstm(high_vol, train , test_len)
 
 
     final_prediction = pd.Series(low_vol_prediction) + pd.Series(high_vol_prediction)  # series, 합산 => 최종예측 데이터

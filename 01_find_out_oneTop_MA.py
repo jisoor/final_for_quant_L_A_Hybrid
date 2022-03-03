@@ -181,7 +181,7 @@ if __name__ == '__main__':
             kurtosis_results[ma].append(k)         #   ' SMA' :   [ 수치1, 수치2 , ..... , 수치 96 ] }
 
     kurtosis_results = pd.DataFrame(kurtosis_results)   # ( 96, 11) DF
-    kurtosis_results.to_csv('./brent_oil/kurtosis_results_without_change.csv', index=True)
+    kurtosis_results.to_csv('./{}/kurtosis_results_without_change.csv'.format(class_name), index=True)
 
 
     # ma_df = pd.DataFrame( ) 이따가 ma랑 period DF만들기
@@ -275,7 +275,7 @@ if __name__ == '__main__':
                           'accuracy': {'prediction vs close': accuracy_1, 'prediction vs prediction': accuracy_2}}
 
         # save simulation data here as checkpoint
-        with open('./brent_oil/simulation_data.json', 'w') as fp:
+        with open('./{}/simulation_data.json'.format(class_name), 'w') as fp:
             json.dump(simulation, fp)
 
 ################ 원하는 ma 선택하기 ##########################
