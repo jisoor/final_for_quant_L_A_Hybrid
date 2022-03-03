@@ -364,7 +364,7 @@ if __name__ == '__main__':
         # RMSE: 314.2596220745497
         # MAPE: 1.6777265314384462
 
-    val_df.to_csv('./brent_oil/{}_lstm_loss_arima_order'.format(class_name), index=True)
+    val_df.to_csv('./{}/{}_lstm_loss_arima_order'.format(class_name, class_name), index=True)
 
 
     # 피클 담글 변수
