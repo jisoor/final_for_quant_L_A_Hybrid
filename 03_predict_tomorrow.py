@@ -61,7 +61,7 @@ if __name__ == '__main__':
     print(len(data)) # 1/26 ~ 2/9(어제)까지 대략 12개의 종가를 예측, backtesting 시켜보자 .(2/10일은 공휴일이었나봄)  # 159개
 
     # 우리가 예측을 위해 필요한 데이터는 (64-1) + (4-1) = 최신 101개이여야 함
-    data_len = ((optimized_period-1) + (lstm_len-1))*-1
+    data_len = ((optimized_period-1) + (lstm_len))*-1
     data = data[data_len:]
 
     # Initialize moving averages from Ta-Lib, store functions in dictionary
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     data = data.rename(columns={'Date': 'date'})
     data.drop(['Open','Close', 'Volume'], axis=1, inplace=True)  # drop 열 추가
     print(data)
-
+    print('길이', len(data))
 
     # 저변동성 / 고 변동성 시계열로 각각 나누기
     simulation = {}
@@ -104,18 +104,21 @@ if __name__ == '__main__':
 ############## 이 밑만 해결하면 댐 ###########################
     # LSTM 예측
     predict_lstm_price = high_vol[-4:]
-    dataset = np.reshape(predict_lstm_price.values, (lstm_len, 1))  # ( 1, lstm_len, 1) 아닌강>?
+    print(high_vol[-6:])
+    dataset = np.reshape(predict_lstm_price.values, ( lstm_len, 1))  # ( 1, lstm_len, 1) 아닌강>?
+    print('dataset', dataset)
     model = load_model('./{}/{}_Lstm_model.h5'.format(class_name, class_name))
     with open('./{}/{}_minmaxscaler.pickle'.format(class_name, class_name), 'rb') as f:
         minmaxscaler = pickle.load(f)
     dataset_scaled = minmaxscaler.transform(dataset)
-    lstm_prediction = model.predict(dataset_scaled)  # dataset_scaled(1, 30, 1)안해줘도??
-    prediction = minmaxscaler.inverse_transform(lstm_prediction)
-    print('lstm 내일 예측 값 :', lstm_prediction)
 
-    final_prediction = arima_prediction + lstm_prediction
+    lstm_prediction = model.predict(np.reshape(dataset_scaled, (1,4,1)))  # dataset_scaled(1, 4, 1)안해줘도??
+    prediction = minmaxscaler.inverse_transform(lstm_prediction)
+    print('lstm 내일 예측 값 :', prediction)
+
+    final_prediction = arima_prediction + prediction
     print('최종 내일 예측 값은?? ====> ', final_prediction)
 
-
+# pip install numpy==1.19.2
 
 
