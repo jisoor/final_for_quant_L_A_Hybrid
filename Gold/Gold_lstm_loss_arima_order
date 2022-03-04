@@ -1,0 +1,2 @@
+class_name,Lstm_loss,Arima_order
+Gold,0.0019765830698611543,"(3, 1, 3)"
